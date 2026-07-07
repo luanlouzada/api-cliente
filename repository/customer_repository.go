@@ -1,105 +1,183 @@
 package repository
 
 import (
+	"context"
+	"errors"
+	"fmt"
+
 	"cliente-api/model"
-	"sort"
-	"sync"
-	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// CustomerRepository guarda os clientes em memoria.
+// CustomerRepository persiste clientes no PostgreSQL.
 type CustomerRepository struct {
-	// RWMutex evita corrida de dados quando houver varias requisicoes ao mesmo tempo.
-	mu        sync.RWMutex
-	customers map[int]model.Customer
-	nextID    int
+	pool *pgxpool.Pool
 }
 
-// NewCustomerRepository cria um repositorio vazio.
-func NewCustomerRepository() *CustomerRepository {
-	return &CustomerRepository{
-		customers: make(map[int]model.Customer),
-		nextID:    1,
-	}
+// NewCustomerRepository cria um repositorio usando o pool de conexoes.
+func NewCustomerRepository(pool *pgxpool.Pool) *CustomerRepository {
+	return &CustomerRepository{pool: pool}
 }
 
-// Create adiciona um cliente e simula ID auto incremental e timestamps de banco.
-func (repo *CustomerRepository) Create(customer model.Customer) model.Customer {
-	repo.mu.Lock()
-	defer repo.mu.Unlock()
+// Create adiciona um cliente e retorna os campos gerados pelo banco.
+func (repo *CustomerRepository) Create(ctx context.Context, customer model.Customer) (model.Customer, error) {
+	const query = `
+		INSERT INTO customers (name, email, phone)
+		VALUES ($1, $2, $3)
+		RETURNING id, name, email, phone, created_at, updated_at
+	`
 
-	now := time.Now().UTC()
-
-	customer.ID = repo.nextID
-	customer.CreatedAt = now
-	customer.UpdatedAt = now
-	repo.customers[customer.ID] = customer
-	repo.nextID++
-
-	return customer
-}
-
-// FindAll retorna todos os clientes cadastrados.
-func (repo *CustomerRepository) FindAll() []model.Customer {
-	repo.mu.RLock()
-	defer repo.mu.RUnlock()
-
-	// Copia os valores do map para uma slice, formato mais adequado para JSON.
-	customers := make([]model.Customer, 0, len(repo.customers))
-	for _, customer := range repo.customers {
-		customers = append(customers, customer)
-	}
-
-	// Maps em Go nao garantem ordem; ordenar facilita exemplos e testes.
-	sort.Slice(customers, func(i, j int) bool {
-		return customers[i].ID < customers[j].ID
-	})
-
-	return customers
-}
-
-// FindByID busca um cliente pelo ID.
-func (repo *CustomerRepository) FindByID(id int) (model.Customer, error) {
-	repo.mu.RLock()
-	defer repo.mu.RUnlock()
-
-	customer, ok := repo.customers[id]
-	if !ok {
-		return model.Customer{}, model.ErrCustomerNotFound
+	err := repo.pool.QueryRow(
+		ctx,
+		query,
+		customer.Name,
+		customer.Email,
+		customer.Phone,
+	).Scan(
+		&customer.ID,
+		&customer.Name,
+		&customer.Email,
+		&customer.Phone,
+		&customer.CreatedAt,
+		&customer.UpdatedAt,
+	)
+	if err != nil {
+		return model.Customer{}, mapDatabaseError("create customer", err)
 	}
 
 	return customer, nil
 }
 
-// Update substitui os dados de um cliente existente e renova o updated_at.
-func (repo *CustomerRepository) Update(id int, customer model.Customer) (model.Customer, error) {
-	repo.mu.Lock()
-	defer repo.mu.Unlock()
+// FindAll retorna todos os clientes cadastrados.
+// Desafio usar paginacao, dica limit/offset, query .next()
+// alterar GET /cliente?limit=10&offset=0   -> pagina 1
+// alterar GET /cliente?limit=10&offset=10 -> pagina 2
+// Nesse projeto não precisa fazer se não quiser, mas no serviço de pedidos sim.
+func (repo *CustomerRepository) FindAll(ctx context.Context) ([]model.Customer, error) {
+	const query = `
+		SELECT id, name, email, phone, created_at, updated_at
+		FROM customers
+		ORDER BY id
+	`
 
-	currentCustomer, ok := repo.customers[id]
-	if !ok {
-		return model.Customer{}, model.ErrCustomerNotFound
+	rows, err := repo.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("find all customers: %w", err)
+	}
+	defer rows.Close()
+
+	customers := make([]model.Customer, 0)
+	for rows.Next() {
+		var customer model.Customer
+		err = rows.Scan(
+			&customer.ID,
+			&customer.Name,
+			&customer.Email,
+			&customer.Phone,
+			&customer.CreatedAt,
+			&customer.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan customer: %w", err)
+		}
+
+		customers = append(customers, customer)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate customers: %w", err)
 	}
 
-	// O ID vem da URL e deve continuar sendo o identificador oficial.
-	customer.ID = id
-	// CreatedAt nao muda em uma atualizacao; UpdatedAt registra a ultima alteracao.
-	customer.CreatedAt = currentCustomer.CreatedAt
-	customer.UpdatedAt = time.Now().UTC()
-	repo.customers[id] = customer
+	return customers, nil
+}
+
+// FindByID busca um cliente pelo ID.
+func (repo *CustomerRepository) FindByID(ctx context.Context, id string) (model.Customer, error) {
+	const query = `
+		SELECT id, name, email, phone, created_at, updated_at
+		FROM customers
+		WHERE id = $1::uuid
+	`
+
+	var customer model.Customer
+	err := repo.pool.QueryRow(ctx, query, id).Scan(
+		&customer.ID,
+		&customer.Name,
+		&customer.Email,
+		&customer.Phone,
+		&customer.CreatedAt,
+		&customer.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return model.Customer{}, model.ErrCustomerNotFound
+	}
+	if err != nil {
+		return model.Customer{}, fmt.Errorf("find customer by id: %w", err)
+	}
+	return customer, nil
+}
+
+// Update substitui os dados de um cliente existente e renova o updated_at.
+func (repo *CustomerRepository) Update(ctx context.Context, id string, customer model.Customer) (model.Customer, error) {
+	const query = `
+		UPDATE customers
+		SET name = $2,
+			email = $3,
+			phone = $4,
+			updated_at = now()
+		WHERE id = $1::uuid
+		RETURNING id, name, email, phone, created_at, updated_at
+	`
+
+	err := repo.pool.QueryRow(
+		ctx,
+		query,
+		id,
+		customer.Name,
+		customer.Email,
+		customer.Phone,
+	).Scan(
+		&customer.ID,
+		&customer.Name,
+		&customer.Email,
+		&customer.Phone,
+		&customer.CreatedAt,
+		&customer.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return model.Customer{}, model.ErrCustomerNotFound
+	}
+	if err != nil {
+		return model.Customer{}, mapDatabaseError("update customer", err)
+	}
 
 	return customer, nil
 }
 
 // Delete remove um cliente existente.
-func (repo *CustomerRepository) Delete(id int) error {
-	repo.mu.Lock()
-	defer repo.mu.Unlock()
+func (repo *CustomerRepository) Delete(ctx context.Context, id string) error {
+	const query = `
+		DELETE FROM customers
+		WHERE id = $1::uuid
+	`
 
-	if _, ok := repo.customers[id]; !ok {
-		return model.ErrCustomerNotFound
+	commandTag, err := repo.pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete customer: %w", err)
 	}
 
-	delete(repo.customers, id)
+	if commandTag.RowsAffected() == 0 {
+		return model.ErrCustomerNotFound
+	}
 	return nil
+}
+
+func mapDatabaseError(operation string, err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return model.ErrCustomerEmailAlreadyExists
+	}
+	return fmt.Errorf("%s: %w", operation, err)
 }

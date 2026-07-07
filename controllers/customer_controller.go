@@ -1,32 +1,52 @@
 package controllers
 
 import (
-	"cliente-api/model"
+	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
-	"strconv"
+
+	"cliente-api/model"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 type CustomerRepository interface {
-	Create(customer model.Customer) model.Customer
-	FindAll() []model.Customer
-	FindByID(id int) (model.Customer, error)
-	Update(id int, customer model.Customer) (model.Customer, error)
-	Delete(id int) error
+	Create(ctx context.Context, customer model.Customer) (model.Customer, error)
+	FindAll(ctx context.Context) ([]model.Customer, error)
+	FindByID(ctx context.Context, id string) (model.Customer, error)
+	Update(ctx context.Context, id string, customer model.Customer) (model.Customer, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type CustomerController struct {
 	repository CustomerRepository
 }
 
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
 func NewCustomerController(repository CustomerRepository) *CustomerController {
 	return &CustomerController{repository: repository}
+}
+
+func customerIDFromRequest(r *http.Request) (string, error) {
+	id := chi.URLParam(r, "id")
+	if _, err := uuid.Parse(id); err != nil {
+		return "", errors.New("id deve ser um uuid valido")
+	}
+	return id, nil
+}
+
+func writeCustomerError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, model.ErrCustomerNotFound):
+		http.Error(w, err.Error(), http.StatusNotFound)
+	case errors.Is(err, model.ErrCustomerEmailAlreadyExists):
+		http.Error(w, err.Error(), http.StatusConflict)
+	default:
+		log.Printf("erro interno ao processar cliente: %v", err)
+		http.Error(w, "erro interno do servidor", http.StatusInternalServerError)
+	}
 }
 
 func (c *CustomerController) CreateCustomer(w http.ResponseWriter, r *http.Request) {
@@ -35,77 +55,92 @@ func (c *CustomerController) CreateCustomer(w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	customer, err := model.NewCustomer(request.Name, request.Email, request.Phone)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	customer = c.repository.Create(customer)
+
+	customer, err = c.repository.Create(r.Context(), customer)
+	if err != nil {
+		writeCustomerError(w, err)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(customer)
-
 }
 
 func (c *CustomerController) FindAllCustomers(w http.ResponseWriter, r *http.Request) {
-	customers := c.repository.FindAll()
+	customers, err := c.repository.FindAll(r.Context())
+	if err != nil {
+		writeCustomerError(w, err)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(customers)
 }
 
-// cliente/1
 func (c *CustomerController) FindCustomerByID(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	idInt, err := strconv.Atoi(id)
+	id, err := customerIDFromRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	customer, err := c.repository.FindByID(idInt)
+
+	customer, err := c.repository.FindByID(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeCustomerError(w, err)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(customer)
 }
 
 func (c *CustomerController) UpdateCustomer(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	idInt, err := strconv.Atoi(id)
+	id, err := customerIDFromRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	var request model.UpdateCustomerRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	customer, err := model.NewCustomer(request.Name, request.Email, request.Phone)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	customer, err = c.repository.Update(idInt, customer)
+
+	customer, err = c.repository.Update(r.Context(), id, customer)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeCustomerError(w, err)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(customer)
 }
 
 func (c *CustomerController) DeleteCustomer(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	idInt, err := strconv.Atoi(id)
+	id, err := customerIDFromRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := c.repository.Delete(idInt); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+
+	if err := c.repository.Delete(r.Context(), id); err != nil {
+		writeCustomerError(w, err)
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
