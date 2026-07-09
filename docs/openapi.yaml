@@ -1,0 +1,294 @@
+openapi: 3.0.3
+info:
+  title: Cliente API
+  version: 1.0.0
+  description: API REST para cadastro, autenticacao e gerenciamento de customers com JWT Bearer.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Cadastrar customer e retornar JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerRequest"
+      responses:
+        "201":
+          description: Customer cadastrado e autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Autenticar customer e retornar JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Customer autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /cliente:
+    get:
+      tags:
+        - Customers
+      summary: Listar customers
+      responses:
+        "200":
+          description: Lista de customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Customers
+      summary: Criar customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerRequest"
+      responses:
+        "201":
+          description: Customer criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /cliente/{id}:
+    get:
+      tags:
+        - Customers
+      summary: Buscar customer por ID
+      parameters:
+        - $ref: "#/components/parameters/CustomerID"
+      responses:
+        "200":
+          description: Customer encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Customers
+      summary: Atualizar customer
+      parameters:
+        - $ref: "#/components/parameters/CustomerID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerRequest"
+      responses:
+        "200":
+          description: Customer atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags:
+        - Customers
+      summary: Remover customer
+      parameters:
+        - $ref: "#/components/parameters/CustomerID"
+      responses:
+        "204":
+          description: Customer removido
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CustomerID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 019f41d1-d56a-7d2e-bf8f-240825a21106
+  responses:
+    BadRequest:
+      description: Requisicao invalida
+      content:
+        text/plain:
+          schema:
+            type: string
+    Unauthorized:
+      description: Token ausente, invalido ou credenciais invalidas
+      content:
+        text/plain:
+          schema:
+            type: string
+    NotFound:
+      description: Customer nao encontrado
+      content:
+        text/plain:
+          schema:
+            type: string
+    Conflict:
+      description: Email ja existe
+      content:
+        text/plain:
+          schema:
+            type: string
+  schemas:
+    CreateCustomerRequest:
+      type: object
+      required:
+        - name
+        - email
+        - phone
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 255
+          example: Admin Aula
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: admin@example.com
+        phone:
+          type: string
+          maxLength: 30
+          example: (11) 98888-7777
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          example: senha-forte-123
+    UpdateCustomerRequest:
+      type: object
+      required:
+        - name
+        - email
+        - phone
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 255
+          example: Cliente Atualizado
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: cliente@example.com
+        phone:
+          type: string
+          maxLength: 30
+          example: (21) 98888-1111
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@example.com
+        password:
+          type: string
+          format: password
+          example: senha-forte-123
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT assinado.
+        token_type:
+          type: string
+          example: Bearer
+        expires_at:
+          type: string
+          format: date-time
+        customer:
+          $ref: "#/components/schemas/Customer"

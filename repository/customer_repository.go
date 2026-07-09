@@ -12,21 +12,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// CustomerRepository persiste clientes no PostgreSQL.
 type CustomerRepository struct {
 	pool *pgxpool.Pool
 }
 
-// NewCustomerRepository cria um repositorio usando o pool de conexoes.
 func NewCustomerRepository(pool *pgxpool.Pool) *CustomerRepository {
 	return &CustomerRepository{pool: pool}
 }
 
-// Create adiciona um cliente e retorna os campos gerados pelo banco.
 func (repo *CustomerRepository) Create(ctx context.Context, customer model.Customer) (model.Customer, error) {
 	const query = `
-		INSERT INTO customers (name, email, phone)
-		VALUES ($1, $2, $3)
+		INSERT INTO customers (name, email, phone, password_hash)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, name, email, phone, created_at, updated_at
 	`
 
@@ -36,6 +33,7 @@ func (repo *CustomerRepository) Create(ctx context.Context, customer model.Custo
 		customer.Name,
 		customer.Email,
 		customer.Phone,
+		customer.PasswordHash,
 	).Scan(
 		&customer.ID,
 		&customer.Name,
@@ -51,11 +49,6 @@ func (repo *CustomerRepository) Create(ctx context.Context, customer model.Custo
 	return customer, nil
 }
 
-// FindAll retorna todos os clientes cadastrados.
-// Desafio usar paginacao, dica limit/offset, query .next()
-// alterar GET /cliente?limit=10&offset=0   -> pagina 1
-// alterar GET /cliente?limit=10&offset=10 -> pagina 2
-// Nesse projeto não precisa fazer se não quiser, mas no serviço de pedidos sim.
 func (repo *CustomerRepository) FindAll(ctx context.Context) ([]model.Customer, error) {
 	const query = `
 		SELECT id, name, email, phone, created_at, updated_at
@@ -93,7 +86,6 @@ func (repo *CustomerRepository) FindAll(ctx context.Context) ([]model.Customer, 
 	return customers, nil
 }
 
-// FindByID busca um cliente pelo ID.
 func (repo *CustomerRepository) FindByID(ctx context.Context, id string) (model.Customer, error) {
 	const query = `
 		SELECT id, name, email, phone, created_at, updated_at
@@ -119,7 +111,33 @@ func (repo *CustomerRepository) FindByID(ctx context.Context, id string) (model.
 	return customer, nil
 }
 
-// Update substitui os dados de um cliente existente e renova o updated_at.
+func (repo *CustomerRepository) FindByEmail(ctx context.Context, email string) (model.Customer, error) {
+	const query = `
+		SELECT id, name, email, phone, password_hash, created_at, updated_at
+		FROM customers
+		WHERE email = $1
+	`
+
+	var customer model.Customer
+	err := repo.pool.QueryRow(ctx, query, email).Scan(
+		&customer.ID,
+		&customer.Name,
+		&customer.Email,
+		&customer.Phone,
+		&customer.PasswordHash,
+		&customer.CreatedAt,
+		&customer.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return model.Customer{}, model.ErrCustomerNotFound
+	}
+	if err != nil {
+		return model.Customer{}, fmt.Errorf("find customer by email: %w", err)
+	}
+
+	return customer, nil
+}
+
 func (repo *CustomerRepository) Update(ctx context.Context, id string, customer model.Customer) (model.Customer, error) {
 	const query = `
 		UPDATE customers
@@ -156,7 +174,6 @@ func (repo *CustomerRepository) Update(ctx context.Context, id string, customer 
 	return customer, nil
 }
 
-// Delete remove um cliente existente.
 func (repo *CustomerRepository) Delete(ctx context.Context, id string) error {
 	const query = `
 		DELETE FROM customers

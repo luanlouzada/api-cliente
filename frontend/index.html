@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cliente API - Auth</title>
+    <link rel="stylesheet" href="/frontend/styles.css">
+  </head>
+  <body>
+    <main class="auth-screen">
+      <section class="auth-intro">
+        <div class="brand-line">
+          <div class="brand-mark">CA</div>
+          <strong>Cliente API</strong>
+        </div>
+        <p class="eyebrow">JWT Bearer authentication</p>
+        <h1>Acesso para testar a API</h1>
+        <p>Crie um customer ou entre com uma conta existente. Depois copie o token e use no Postman como Authorization Bearer.</p>
+        <div class="postman-steps" aria-label="Resumo para Postman">
+          <span>1. Cadastre ou entre</span>
+          <span>2. Copie o token</span>
+          <span>3. Chame `/cliente`</span>
+        </div>
+      </section>
+
+      <section class="auth-card" aria-label="Autenticacao">
+        <div class="card-heading">
+          <p id="authKicker" class="eyebrow">Conta existente</p>
+          <h2 id="authTitle">Entrar</h2>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="Alternar formulario">
+          <button id="loginTab" type="button" class="tab tab-active">Login</button>
+          <button id="registerTab" type="button" class="tab">Cadastro</button>
+        </div>
+
+        <form id="authForm" class="form">
+          <label id="nameField" class="hidden">
+            Nome
+            <input id="authName" name="name" autocomplete="name" minlength="3" value="Admin Aula">
+          </label>
+          <label id="phoneField" class="hidden">
+            Telefone
+            <input id="authPhone" name="phone" autocomplete="tel" value="(11) 98888-7777">
+          </label>
+          <label>
+            Email
+            <input id="authEmail" name="email" autocomplete="email" required type="email" value="admin@example.com">
+          </label>
+          <label>
+            Senha
+            <input id="authPassword" name="password" autocomplete="current-password" required minlength="8" type="password" value="senha-forte-123">
+          </label>
+
+          <p id="authError" class="alert hidden"></p>
+          <button id="authSubmitButton" type="submit" class="button button-full">Entrar</button>
+        </form>
+
+        <section id="sessionPanel" class="session-panel hidden" aria-label="Sessao autenticada">
+          <div class="session-header">
+            <div>
+              <p class="eyebrow">Autenticado</p>
+              <strong id="customerName">-</strong>
+              <small id="customerEmail">-</small>
+            </div>
+            <button id="clearSessionButton" type="button" class="button button-light">Limpar</button>
+          </div>
+          <p id="tokenExpiresAt" class="token-expiration">-</p>
+          <label>
+            Bearer token
+            <textarea id="tokenBox" readonly spellcheck="false" aria-label="JWT atual"></textarea>
+          </label>
+          <button id="copyTokenButton" type="button" class="button button-light button-full">Copiar token</button>
+          <p id="copyStatus" class="copy-status" aria-live="polite"></p>
+        </section>
+      </section>
+    </main>
+
+    <script src="/frontend/app.js"></script>
+  </body>
+</html>

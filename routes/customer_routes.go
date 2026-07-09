@@ -6,7 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func CustomerRoutes(r *chi.Mux, controller *controllers.CustomerController) {
+func CustomerRoutes(r chi.Router, controller *controllers.CustomerController) {
 	r.Post("/cliente", controller.CreateCustomer)
 	r.Get("/cliente", controller.FindAllCustomers)
 	r.Get("/cliente/{id}", controller.FindCustomerByID)

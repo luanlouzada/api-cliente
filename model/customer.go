@@ -10,12 +10,15 @@ import (
 )
 
 const (
-	customerNameMinLength  = 3
-	customerNameMaxLength  = 255
-	customerEmailMaxLength = 255
-	customerPhoneMaxLength = 30
-	customerPhoneMinDigits = 10
-	customerPhoneMaxDigits = 15
+	customerNameMinLength     = 3
+	customerNameMaxLength     = 255
+	customerEmailMaxLength    = 255
+	customerPhoneMaxLength    = 30
+	customerPhoneMinDigits    = 10
+	customerPhoneMaxDigits    = 15
+	customerPasswordMinLength = 8
+
+	customerPasswordMaxBytes = 72
 )
 
 var (
@@ -23,26 +26,38 @@ var (
 	customerPhoneFormatRegex = regexp.MustCompile(`^\+?[0-9\s().-]+$`)
 )
 
-// Customer representa a entidade principal da API.
 type Customer struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Phone     string    `json:"phone"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           uuid.UUID `json:"id"`
+	Name         string    `json:"name"`
+	Email        string    `json:"email"`
+	Phone        string    `json:"phone"`
+	PasswordHash string    `json:"-"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// NewCustomer cria um cliente valido a partir dos dados de entrada.
-func NewCustomer(name, email, phone string) (Customer, error) {
+func NewCustomer(name, email, phone, passwordHash string) (Customer, error) {
+	customer, err := NewCustomerProfile(name, email, phone)
+	if err != nil {
+		return Customer{}, err
+	}
+	if strings.TrimSpace(passwordHash) == "" {
+		return Customer{}, ErrCustomerPasswordHashRequired
+	}
+
+	customer.PasswordHash = passwordHash
+	return customer, nil
+}
+
+func NewCustomerProfile(name, email, phone string) (Customer, error) {
 	name = strings.TrimSpace(name)
-	email = strings.TrimSpace(email)
+	email = NormalizeCustomerEmail(email)
 	phone = strings.TrimSpace(phone)
 
 	if err := validateCustomerName(name); err != nil {
 		return Customer{}, err
 	}
-	if err := validateCustomerEmail(email); err != nil {
+	if err := ValidateCustomerEmail(email); err != nil {
 		return Customer{}, err
 	}
 	if err := validateCustomerPhone(phone); err != nil {
@@ -54,6 +69,10 @@ func NewCustomer(name, email, phone string) (Customer, error) {
 		Email: email,
 		Phone: phone,
 	}, nil
+}
+
+func NormalizeCustomerEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func validateCustomerName(name string) error {
@@ -69,7 +88,7 @@ func validateCustomerName(name string) error {
 	}
 }
 
-func validateCustomerEmail(email string) error {
+func ValidateCustomerEmail(email string) error {
 	switch {
 	case email == "":
 		return ErrCustomerEmailRequired
@@ -105,16 +124,15 @@ func validateCustomerPhone(phone string) error {
 	return nil
 }
 
-// CreateCustomerRequest representa o corpo esperado ao criar um cliente.
-type CreateCustomerRequest struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Phone string `json:"phone"`
-}
-
-// UpdateCustomerRequest representa o corpo esperado ao atualizar um cliente.
-type UpdateCustomerRequest struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Phone string `json:"phone"`
+func ValidateCustomerPassword(password string) error {
+	switch length := utf8.RuneCountInString(password); {
+	case password == "":
+		return ErrCustomerPasswordRequired
+	case length < customerPasswordMinLength:
+		return ErrCustomerPasswordTooShort
+	case len(password) > customerPasswordMaxBytes:
+		return ErrCustomerPasswordTooLong
+	default:
+		return nil
+	}
 }

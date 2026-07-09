@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	"cliente-api/auth"
+	"cliente-api/dto"
 	"cliente-api/model"
 
 	"github.com/go-chi/chi/v5"
@@ -32,7 +34,7 @@ func NewCustomerController(repository CustomerRepository) *CustomerController {
 func customerIDFromRequest(r *http.Request) (string, error) {
 	id := chi.URLParam(r, "id")
 	if _, err := uuid.Parse(id); err != nil {
-		return "", errors.New("id deve ser um uuid valido")
+		return "", model.ErrInvalidCustomerID
 	}
 	return id, nil
 }
@@ -43,6 +45,8 @@ func writeCustomerError(w http.ResponseWriter, err error) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 	case errors.Is(err, model.ErrCustomerEmailAlreadyExists):
 		http.Error(w, err.Error(), http.StatusConflict)
+	case errors.Is(err, model.ErrInvalidCustomerID):
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	default:
 		log.Printf("erro interno ao processar cliente: %v", err)
 		http.Error(w, "erro interno do servidor", http.StatusInternalServerError)
@@ -50,13 +54,24 @@ func writeCustomerError(w http.ResponseWriter, err error) {
 }
 
 func (c *CustomerController) CreateCustomer(w http.ResponseWriter, r *http.Request) {
-	var request model.CreateCustomerRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	var request dto.CreateCustomerRequest
+	if err := auth.DecodeJSONBody(w, r, &request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	customer, err := model.NewCustomer(request.Name, request.Email, request.Phone)
+	if err := model.ValidateCustomerPassword(request.Password); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	passwordHash, err := auth.HashPassword(request.Password)
+	if err != nil {
+		writeCustomerError(w, err)
+		return
+	}
+
+	customer, err := model.NewCustomer(request.Name, request.Email, request.Phone, passwordHash)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -66,6 +81,10 @@ func (c *CustomerController) CreateCustomer(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		writeCustomerError(w, err)
 		return
+	}
+
+	if claims, ok := auth.ClaimsFromContext(r.Context()); ok {
+		log.Printf("cliente criado por customer_id=%s email=%s", claims.Subject, claims.Email)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -108,13 +127,13 @@ func (c *CustomerController) UpdateCustomer(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var request model.UpdateCustomerRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	var request dto.UpdateCustomerRequest
+	if err := auth.DecodeJSONBody(w, r, &request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	customer, err := model.NewCustomer(request.Name, request.Email, request.Phone)
+	customer, err := model.NewCustomerProfile(request.Name, request.Email, request.Phone)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

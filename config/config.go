@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -12,6 +13,7 @@ import (
 type Config struct {
 	DatabaseURL string
 	Database    DatabaseConfig
+	Auth        AuthConfig
 	Port        string
 }
 
@@ -22,6 +24,11 @@ type DatabaseConfig struct {
 	Password string
 	Name     string
 	SSLMode  string
+}
+
+type AuthConfig struct {
+	JWTSecret      string
+	AccessTokenTTL time.Duration
 }
 
 func Load() Config {
@@ -46,7 +53,11 @@ func Load() Config {
 	return Config{
 		DatabaseURL: databaseURL,
 		Database:    database,
-		Port:        getEnv("PORT", "8080"),
+		Auth: AuthConfig{
+			JWTSecret:      getEnv("JWT_SECRET", ""),
+			AccessTokenTTL: getDurationEnv("JWT_ACCESS_TOKEN_TTL", time.Hour),
+		},
+		Port: getEnv("PORT", "8080"),
 	}
 }
 
@@ -71,4 +82,18 @@ func getEnv(key, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func getDurationEnv(key string, fallback time.Duration) time.Duration {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		log.Printf("variavel %s invalida (%q), usando %s", key, value, fallback)
+		return fallback
+	}
+	return duration
 }
