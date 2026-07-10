@@ -9,4 +9,6 @@ import (
 func AuthRoutes(r chi.Router, controller *controllers.AuthController) {
 	r.Post("/auth/register", controller.Register)
 	r.Post("/auth/login", controller.Login)
+	r.Post("/auth/refresh", controller.Refresh)
+	r.Post("/auth/logout", controller.Logout)
 }

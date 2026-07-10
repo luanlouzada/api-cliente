@@ -27,8 +27,10 @@ type DatabaseConfig struct {
 }
 
 type AuthConfig struct {
-	JWTSecret      string
-	AccessTokenTTL time.Duration
+	JWTSecret               string
+	AccessTokenTTL          time.Duration
+	RefreshTokenIdleTTL     time.Duration
+	RefreshTokenAbsoluteTTL time.Duration
 }
 
 func Load() Config {
@@ -54,8 +56,10 @@ func Load() Config {
 		DatabaseURL: databaseURL,
 		Database:    database,
 		Auth: AuthConfig{
-			JWTSecret:      getEnv("JWT_SECRET", ""),
-			AccessTokenTTL: getDurationEnv("JWT_ACCESS_TOKEN_TTL", time.Hour),
+			JWTSecret:               getEnv("JWT_SECRET", ""),
+			AccessTokenTTL:          getDurationEnv("JWT_ACCESS_TOKEN_TTL", 15*time.Minute),
+			RefreshTokenIdleTTL:     getDurationEnv("REFRESH_TOKEN_IDLE_TTL", 7*24*time.Hour),
+			RefreshTokenAbsoluteTTL: getDurationEnv("REFRESH_TOKEN_ABSOLUTE_TTL", 30*24*time.Hour),
 		},
 		Port: getEnv("PORT", "8080"),
 	}

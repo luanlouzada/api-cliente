@@ -54,6 +54,46 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Renovar o par de tokens com rotacao do refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "200":
+          description: Tokens renovados; o refresh token anterior foi revogado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Revogar a familia do refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "204":
+          description: Sessao revogada ou ja inexistente
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /cliente:
     get:
       tags:
@@ -259,6 +299,15 @@ components:
           type: string
           format: password
           example: senha-forte-123
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh token opaco retornado no login, cadastro ou renovacao.
+          example: rt_6jvWz5vPqm9V4gxKbtRk0K5ZgW6dN5PqL3sB8C1xY2A
     Customer:
       type: object
       properties:
@@ -280,6 +329,14 @@ components:
           format: date-time
     AuthResponse:
       type: object
+      required:
+        - access_token
+        - token_type
+        - expires_at
+        - refresh_token
+        - refresh_expires_at
+        - session_expires_at
+        - customer
       properties:
         access_token:
           type: string
@@ -290,5 +347,16 @@ components:
         expires_at:
           type: string
           format: date-time
+        refresh_token:
+          type: string
+          description: Token opaco de uso unico; armazene-o de forma segura e substitua-o a cada renovacao.
+        refresh_expires_at:
+          type: string
+          format: date-time
+          description: Limite de inatividade atual do refresh token, renovado a cada rotacao sem ultrapassar a sessao.
+        session_expires_at:
+          type: string
+          format: date-time
+          description: Limite absoluto da familia; nao e prorrogado pelas rotacoes.
         customer:
           $ref: "#/components/schemas/Customer"

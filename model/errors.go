@@ -35,3 +35,9 @@ var ErrCustomerPasswordTooLong = errors.New("senha deve ter no maximo 72 bytes")
 var ErrCustomerPasswordHashRequired = errors.New("hash da senha e obrigatorio")
 
 var ErrInvalidCredentials = errors.New("credenciais invalidas")
+
+var ErrRefreshTokenInvalid = errors.New("refresh token invalido")
+
+var ErrRefreshTokenExpired = errors.New("refresh token expirado")
+
+var ErrRefreshTokenReused = errors.New("refresh token reutilizado")

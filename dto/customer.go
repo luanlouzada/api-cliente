@@ -26,6 +26,10 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 type CustomerResponse struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
@@ -47,8 +51,11 @@ func NewCustomerResponse(customer model.Customer) CustomerResponse {
 }
 
 type AuthResponse struct {
-	AccessToken string           `json:"access_token"`
-	TokenType   string           `json:"token_type"`
-	ExpiresAt   time.Time        `json:"expires_at"`
-	Customer    CustomerResponse `json:"customer"`
+	AccessToken      string           `json:"access_token"`
+	TokenType        string           `json:"token_type"`
+	ExpiresAt        time.Time        `json:"expires_at"`
+	RefreshToken     string           `json:"refresh_token"`
+	RefreshExpiresAt time.Time        `json:"refresh_expires_at"`
+	SessionExpiresAt time.Time        `json:"session_expires_at"`
+	Customer         CustomerResponse `json:"customer"`
 }

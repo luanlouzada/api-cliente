@@ -34,7 +34,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("erro ao configurar JWT: %v", err)
 	}
-	authController := controllers.NewAuthController(customerRepository, tokenManager)
+	refreshTokenManager, err := auth.NewRefreshTokenManager(
+		cfg.Auth.RefreshTokenIdleTTL,
+		cfg.Auth.RefreshTokenAbsoluteTTL,
+	)
+	if err != nil {
+		log.Fatalf("erro ao configurar refresh token: %v", err)
+	}
+	authController := controllers.NewAuthController(customerRepository, tokenManager, refreshTokenManager)
 
 	r := chi.NewRouter()
 
@@ -56,6 +63,8 @@ func main() {
 	log.Println("GET    /               -> frontend de demonstracao")
 	log.Println("POST   /auth/register -> cadastrar customer e retornar JWT")
 	log.Println("POST   /auth/login    -> autenticar customer e retornar JWT")
+	log.Println("POST   /auth/refresh  -> renovar access e refresh tokens")
+	log.Println("POST   /auth/logout   -> revogar a sessao do refresh token")
 	log.Println("POST   /cliente       -> criar cliente (JWT)")
 	log.Println("GET    /cliente       -> listar clientes (JWT)")
 	log.Println("GET    /cliente/{id}  -> buscar por id (JWT)")

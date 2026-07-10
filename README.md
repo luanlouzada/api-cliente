@@ -4,6 +4,10 @@ API REST em Go para gerenciamento de clientes.
 
 ## Endpoints
 
+- `POST /auth/register` — cadastrar e emitir access/refresh tokens
+- `POST /auth/login` — autenticar e emitir access/refresh tokens
+- `POST /auth/refresh` — renovar e rotacionar os tokens
+- `POST /auth/logout` — revogar a sessao do refresh token
 - `POST /cliente` — criar cliente
 - `GET /cliente` — listar clientes
 - `GET /cliente/{id}` — buscar por id
@@ -74,3 +78,22 @@ go run main.go
 ```
 
 A API sobe em `http://localhost:$PORT`.
+
+## Renovar o token
+
+O cadastro e o login retornam `access_token`, `expires_at`, `refresh_token`,
+`refresh_expires_at` e `session_expires_at`. O refresh token e opaco, salvo no
+banco somente como hash SHA-256 e rotacionado em todo uso.
+
+Por padrao, o access token dura 15 minutos, o refresh token expira apos 7 dias
+sem renovacao e a familia da sessao termina definitivamente depois de 30 dias.
+Uma rotacao nunca estende `session_expires_at`.
+
+```bash
+curl -X POST http://localhost:8080/auth/refresh \
+  -H 'Content-Type: application/json' \
+  -d '{"refresh_token":"rt_..."}'
+```
+
+Substitua sempre o refresh token anterior pelo novo valor retornado. A tentativa
+de reutilizar um token ja rotacionado revoga toda a familia da sessao.
