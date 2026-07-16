@@ -50,8 +50,9 @@ func newIPRateLimiter(requestsPerMinute, capacity float64) *ipRateLimiter {
 	}
 }
 
-// middleware aplica o balde do IP direto à requisição e devolve 429 com Retry-After quando esgotado.
-// A topologia de proxy deve ser configurada na infraestrutura, sem confiar em cabeçalhos enviados pelo cliente.
+// middleware aplica o balde do IP direto à requisição e devolve 429 com
+// Retry-After quando esgotado. A topologia de proxy deve ser configurada na
+// infraestrutura, sem confiar em cabeçalhos enviados pelo cliente.
 func (limiter *ipRateLimiter) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		allowed, retryAfter := limiter.allow(clientIP(request))

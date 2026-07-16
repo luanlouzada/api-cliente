@@ -552,7 +552,7 @@ components:
           type: string
           minLength: 10
           maxLength: 30
-          pattern: '^\+?[0-9(][0-9 ().-]*[0-9)]$'
+          pattern: '^\+?\(?[0-9](?:[ ().-]*[0-9]){9,14}\)?$'
           description: O contrato exige o valor sem espaços nas extremidades e com 10 a 15 dígitos; espaços internos e os separadores (), ponto e hífen são aceitos. O servidor remove espaços externos defensivamente.
           example: (11) 98888-7777
         password:
@@ -588,7 +588,7 @@ components:
           type: string
           minLength: 10
           maxLength: 30
-          pattern: '^\+?[0-9(][0-9 ().-]*[0-9)]$'
+          pattern: '^\+?\(?[0-9](?:[ ().-]*[0-9]){9,14}\)?$'
           description: O contrato exige o valor sem espaços nas extremidades e com 10 a 15 dígitos; espaços internos e os separadores (), ponto e hífen são aceitos. O servidor remove espaços externos defensivamente.
           example: (21) 98888-1111
     LoginRequest:

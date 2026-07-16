@@ -37,7 +37,7 @@ func (store *postgresData) Create(ctx context.Context, customer Customer) (Custo
 		&customer.UpdatedAt,
 	)
 	if err != nil {
-		return Customer{}, mapDatabaseError("criar cliente", err)
+		return Customer{}, mapDatabaseError("inserir cliente", err)
 	}
 	return customer, nil
 }
@@ -53,11 +53,13 @@ func (store *postgresData) FindAll(ctx context.Context) ([]Customer, error) {
 
 	rows, err := store.pool.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("listar clientes: %w", err)
+		return nil, fmt.Errorf("consultar clientes: %w", err)
 	}
 	defer rows.Close()
 
-	customers := make([]Customer, 0)
+	// O valor zero de uma slice já representa uma coleção sem elementos. O Model
+	// pode preservar nil; a fronteira de apresentação decidirá como serializá-lo.
+	var customers []Customer
 	for rows.Next() {
 		var customer Customer
 		if err := rows.Scan(
@@ -144,7 +146,7 @@ func (store *postgresData) Update(
 		return Customer{}, ErrCustomerNotFound
 	}
 	if err != nil {
-		return Customer{}, mapDatabaseError("atualizar cliente", err)
+		return Customer{}, mapDatabaseError("persistir atualização do cliente", err)
 	}
 	return customer, nil
 }
@@ -156,7 +158,7 @@ func (store *postgresData) Delete(ctx context.Context, id uuid.UUID) error {
 
 	commandTag, err := store.pool.Exec(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("excluir cliente: %w", err)
+		return fmt.Errorf("remover cliente do PostgreSQL: %w", err)
 	}
 	if commandTag.RowsAffected() == 0 {
 		return ErrCustomerNotFound

@@ -20,5 +20,12 @@ Cada subdiretório gera um executável:
 6. carrega a View web;
 7. monta as rotas e inicia o servidor.
 
-O arquivo mostra a montagem completa de propósito. Ele não contém regras de
-clientes ou autenticação; essas regras pertencem ao Model.
+A função `main` cria o logger e concentra a única saída explícita do processo.
+`startApplication` carrega a configuração e prepara o encerramento por sinais;
+`run` conecta o MVC, inicia o servidor e devolve qualquer erro. Essa divisão
+permite que as funções internas retornem normalmente e executem seus `defer`
+antes de o processo terminar.
+
+A montagem permanece concentrada nesse arquivo para tornar visível como as
+partes do MVC são conectadas. Regras de clientes e autenticação permanecem no
+Model.

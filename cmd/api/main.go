@@ -19,17 +19,28 @@ import (
 	"cliente-api/internal/view"
 )
 
-// main carrega a configuração, prepara o encerramento por sinais e inicia a API.
+// main é o único ponto que encerra o processo com código de erro. As funções
+// seguintes devolvem erros normalmente, permitindo que seus defers executem e
+// mantendo o fluxo mais simples de testar e acompanhar.
 func main() {
 	// O pacote slog fornece logs estruturados: cada mensagem pode carregar pares
 	// como "error" e seu valor. NewTextHandler define stdout como destino e usa
 	// um formato textual legível; slog.New cria o logger usado pelo processo.
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
+	if err := startApplication(logger); err != nil {
+		logger.Error("aplicação encerrada", "error", err)
+		os.Exit(1)
+	}
+}
+
+// startApplication carrega a configuração e prepara o contexto cancelado por
+// sinais do sistema. Ela devolve qualquer falha ao main, em vez de encerrar o
+// processo diretamente, para preservar a execução dos defers.
+func startApplication(logger *slog.Logger) error {
 	applicationConfig, err := config.Load()
 	if err != nil {
-		logger.Error("configuração inválida", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("configuração inválida: %w", err)
 	}
 
 	// NotifyContext cancela o contexto raiz ao receber Ctrl+C ou SIGTERM, sinal
@@ -37,10 +48,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := run(ctx, applicationConfig, logger); err != nil {
-		logger.Error("aplicação encerrada", "error", err)
-		os.Exit(1)
-	}
+	return run(ctx, applicationConfig, logger)
 }
 
 // run conecta Model, View e Controllers, inicia o servidor e coordena seu

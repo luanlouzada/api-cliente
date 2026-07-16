@@ -1,7 +1,8 @@
 # Migration PostgreSQL
 
 Uma migration é um arquivo SQL que cria ou altera a estrutura do banco de forma
-repetível. Este template começa com apenas uma versão, formada por dois arquivos:
+repetível. Como esta base didática parte de um banco novo, o esquema final está
+consolidado em uma única versão inicial, formada por dois arquivos:
 
 - `000001_init.up.sql` cria diretamente o esquema completo;
 - `000001_init.down.sql` desfaz essa criação na ordem inversa das dependências.
@@ -34,6 +35,7 @@ Em um banco descartável de estudo, `make migrate-down` executa o arquivo `down`
 e remove as três tabelas. Essa operação apaga os dados e não deve ser tratada
 como estratégia de recuperação de produção.
 
-Quando um projeto já publicado precisar mudar o esquema, não altere a migration
-que já foi executada em outros bancos. Crie uma nova versão e revise seu efeito
-com backup antes da implantação.
+Essa consolidação inicial não serve para atualizar bancos criados por versões
+anteriores do projeto. Quando um projeto já distribuído precisar mudar o esquema,
+preserve as migrations executadas e crie uma nova versão. Antes da implantação,
+revise o efeito da mudança e mantenha um backup adequado.

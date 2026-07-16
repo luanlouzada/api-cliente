@@ -74,7 +74,8 @@ func NewRouter(dependencies RouterDependencies) http.Handler {
 }
 
 // allowedMethods calcula os métodos aceitos para uma rota e inclui HEAD quando GET é válido.
-// O resultado alimenta o cabeçalho Allow das respostas 405 sem manter uma lista duplicada de rotas.
+// O resultado alimenta o cabeçalho Allow das respostas 405 sem manter uma
+// lista duplicada de rotas.
 func allowedMethods(routes chi.Routes, path string) []string {
 	methods := make([]string, 0, 2)
 	for _, method := range []string{

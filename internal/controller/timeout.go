@@ -111,11 +111,16 @@ func (writer *bufferedResponseWriter) reset() {
 
 // commit publica atomicamente cabeçalhos, status e corpo no ResponseWriter real.
 // Em requisições HEAD, preserva o Content-Length da representação sem enviar o corpo.
-func (writer *bufferedResponseWriter) commit(destination http.ResponseWriter, omitBody bool) error {
+func (writer *bufferedResponseWriter) commit(
+	destination http.ResponseWriter,
+	omitBody bool,
+) error {
 	for key, values := range writer.header {
 		destination.Header()[key] = append([]string(nil), values...)
 	}
-	if omitBody && responseStatusAllowsBody(writer.statusCode) && destination.Header().Get("Content-Length") == "" {
+	if omitBody &&
+		responseStatusAllowsBody(writer.statusCode) &&
+		destination.Header().Get("Content-Length") == "" {
 		destination.Header().Set("Content-Length", strconv.Itoa(writer.body.Len()))
 	}
 	destination.WriteHeader(writer.statusCode)
@@ -128,5 +133,7 @@ func (writer *bufferedResponseWriter) commit(destination http.ResponseWriter, om
 
 // responseStatusAllowsBody informa se o status HTTP pode transportar corpo de resposta.
 func responseStatusAllowsBody(statusCode int) bool {
-	return statusCode >= 200 && statusCode != http.StatusNoContent && statusCode != http.StatusNotModified
+	return statusCode >= 200 &&
+		statusCode != http.StatusNoContent &&
+		statusCode != http.StatusNotModified
 }

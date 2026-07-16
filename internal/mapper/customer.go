@@ -16,7 +16,8 @@ func ToCreateCustomerInput(request dto.CreateCustomerRequest) model.CreateCustom
 	}
 }
 
-// ToUpdateCustomerInput seleciona somente os campos públicos permitidos na atualização de cliente.
+// ToUpdateCustomerInput seleciona somente os campos públicos permitidos na
+// atualização de cliente.
 func ToUpdateCustomerInput(request dto.UpdateCustomerRequest) model.UpdateCustomerInput {
 	return model.UpdateCustomerInput{
 		Name:  request.Name,
@@ -40,7 +41,9 @@ func ToCustomerResponse(customer model.Customer) dto.CustomerResponse {
 	}
 }
 
-// ToCustomerResponses converte uma coleção preservando a ordem e produz uma lista JSON vazia para nil.
+// ToCustomerResponses converte uma coleção preservando a ordem. make cria uma
+// slice não nil mesmo quando a entrada é nil, para a View produzir [] em vez de
+// null sem levar essa preocupação de apresentação para o Model.
 func ToCustomerResponses(customers []model.Customer) []dto.CustomerResponse {
 	responses := make([]dto.CustomerResponse, 0, len(customers))
 	for _, customer := range customers {

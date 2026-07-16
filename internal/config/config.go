@@ -132,20 +132,24 @@ func (config Config) Validate() error {
 	if err := validatePort(config.Port); err != nil {
 		return err
 	}
+	// As mensagens destas invariantes são fixas e não envolvem outra causa.
+	// errors.New comunica essa intenção sem oferecer formatação desnecessária.
 	if config.DatabaseURL == "" {
-		return fmt.Errorf("DATABASE_URL não pode ser vazia")
+		return errors.New("DATABASE_URL não pode ser vazia")
 	}
 	if len(config.Auth.JWTSecret) < 32 {
-		return fmt.Errorf("JWT_SECRET deve ter pelo menos 32 bytes")
+		return errors.New("JWT_SECRET deve ter pelo menos 32 bytes")
 	}
 	if config.Auth.AccessTokenTTL < 10*time.Second {
-		return fmt.Errorf("JWT_ACCESS_TOKEN_TTL deve ser de pelo menos 10 segundos")
+		return errors.New("JWT_ACCESS_TOKEN_TTL deve ser de pelo menos 10 segundos")
 	}
 	if config.Auth.RefreshTokenIdleTTL <= 0 {
-		return fmt.Errorf("REFRESH_TOKEN_IDLE_TTL deve ser positivo")
+		return errors.New("REFRESH_TOKEN_IDLE_TTL deve ser positivo")
 	}
 	if config.Auth.RefreshTokenAbsoluteTTL < config.Auth.RefreshTokenIdleTTL {
-		return fmt.Errorf("REFRESH_TOKEN_ABSOLUTE_TTL deve ser maior ou igual a REFRESH_TOKEN_IDLE_TTL")
+		return errors.New(
+			"REFRESH_TOKEN_ABSOLUTE_TTL deve ser maior ou igual a REFRESH_TOKEN_IDLE_TTL",
+		)
 	}
 	return nil
 }
@@ -156,24 +160,24 @@ func validateHTTPHost(value string) error {
 	if value == "localhost" || net.ParseIP(value) != nil {
 		return nil
 	}
-	return fmt.Errorf("HTTP_HOST deve ser localhost ou um endereço IP")
+	return errors.New("HTTP_HOST deve ser localhost ou um endereço IP")
 }
 
 // validatePort exige uma porta TCP composta somente por dígitos ASCII e dentro
 // do intervalo permitido, sem sinais ou espaços aceitos por conversores gerais.
 func validatePort(value string) error {
 	if value == "" {
-		return fmt.Errorf("PORT deve ser um número entre 1 e 65535")
+		return errors.New("PORT deve ser um número entre 1 e 65535")
 	}
 	for _, character := range value {
 		if character < '0' || character > '9' {
-			return fmt.Errorf("PORT deve ser um número entre 1 e 65535")
+			return errors.New("PORT deve ser um número entre 1 e 65535")
 		}
 	}
 
 	port, err := strconv.Atoi(value)
 	if err != nil || port < 1 || port > 65535 {
-		return fmt.Errorf("PORT deve ser um número entre 1 e 65535")
+		return errors.New("PORT deve ser um número entre 1 e 65535")
 	}
 	return nil
 }

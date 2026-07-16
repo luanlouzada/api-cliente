@@ -8,8 +8,8 @@ renovação aleatórias e descartáveis.
 
 ## Arquitetura MVC
 
-O projeto usa MVC de forma direta. DTOs e Mappers apenas protegem a fronteira
-HTTP e não acrescentam novas camadas arquiteturais:
+O projeto usa MVC de forma direta. DTOs e Mappers são componentes auxiliares
+que definem e protegem a fronteira HTTP:
 
 ```text
 Requisição HTTP → Controller → DTO de entrada → Mapper → Model
@@ -24,8 +24,8 @@ Model → Mapper → DTO de resposta → View JSON → Resposta HTTP
 - [`internal/dto`](internal/dto/README.md): formatos públicos de entrada e saída.
 - [`internal/mapper`](internal/mapper/README.md): conversões entre DTO e Model.
 - [`internal/config`](internal/config/README.md) e
-  [`internal/database`](internal/database/README.md): configuração e conexão
-  PostgreSQL, que dão suporte ao MVC sem formar novas camadas.
+  [`internal/database`](internal/database/README.md): suporte de inicialização,
+  configuração e conexão compartilhada com o PostgreSQL.
 - [`cmd/api`](cmd/README.md): ponto de entrada que monta o MVC e inicia o servidor.
 
 ### Controller e Handler em Go
@@ -34,10 +34,10 @@ Os tipos `AuthenticationController`, `CustomerController` e
 `FrontendController` são os Controllers deste projeto. Seus métodos recebem a
 requisição, leem o DTO, chamam o Model e escolhem a View devolvida ao cliente.
 
-A biblioteca padrão de Go chama de `http.Handler` qualquer componente capaz de
-atender HTTP. Por isso, os métodos dos Controllers possuem a assinatura usada
-por `http.HandlerFunc`, mas **Handler não é uma camada adicional**: é apenas o
-nome da interface HTTP da linguagem. A arquitetura continua sendo:
+A biblioteca padrão de Go representa componentes capazes de atender HTTP pelo
+contrato `http.Handler`. Os métodos dos Controllers possuem uma assinatura
+compatível com `http.HandlerFunc`, por isso o roteador consegue chamá-los
+diretamente. Neste projeto, *handler* descreve esse papel técnico dos métodos:
 
 ```text
 Rota → Controller → Model → View

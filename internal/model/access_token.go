@@ -18,9 +18,11 @@ const (
 
 var (
 	ErrJWTSecretTooShort     = errors.New("JWT_SECRET deve ter pelo menos 32 bytes")
-	ErrAccessTokenTTLInvalid = errors.New("tempo de expiração do JWT deve ser de pelo menos 10 segundos")
-	ErrAccessTokenInvalid    = errors.New("token de acesso inválido")
-	ErrAccessTokenExpired    = errors.New("token de acesso expirado")
+	ErrAccessTokenTTLInvalid = errors.New(
+		"tempo de expiração do JWT deve ser de pelo menos 10 segundos",
+	)
+	ErrAccessTokenInvalid = errors.New("token de acesso inválido")
+	ErrAccessTokenExpired = errors.New("token de acesso expirado")
 )
 
 // Claims contém os campos validados extraídos de um token de acesso. No padrão
@@ -104,7 +106,7 @@ func (manager *AccessTokenManager) Validate(tokenString string) (Claims, error) 
 	parsedClaims := accessTokenClaims{}
 	// ParseWithClaims verifica formato e assinatura. As opções restringem o
 	// algoritmo a HS256, exigem expiração, validam a data de emissão e usam a
-	// a fonte de tempo do gerenciador, mantendo emissão e validação coerentes.
+	// fonte de tempo do gerenciador, mantendo emissão e validação coerentes.
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&parsedClaims,

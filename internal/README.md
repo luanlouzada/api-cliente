@@ -26,8 +26,8 @@ O Model não conhece HTTP. A View não decide autorização. O Mapper apenas cop
 campos. O Controller não contém regra de negócio: ele interpreta a requisição,
 chama o Model e escolhe a resposta.
 
-`config` e `database` são suporte de inicialização, não partes adicionais do
-MVC. Eles são usados em `cmd/api/main.go` antes de o servidor começar.
+`config` e `database` preparam a configuração e o pool de conexões usados pelo
+MVC. Eles são inicializados em `cmd/api/main.go` antes de o servidor começar.
 
 Para estudar uma operação completa, comece em `controller/router.go`, siga para
 o método do Controller, atravesse o DTO e o Mapper, leia a operação correspondente

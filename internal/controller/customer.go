@@ -23,7 +23,12 @@ type CustomerModel interface {
 	// Get busca um cliente por identificador respeitando a autorização do principal.
 	Get(context.Context, model.Principal, uuid.UUID) (model.Customer, error)
 	// Update altera os campos permitidos do cliente quando o principal pode executar a operação.
-	Update(context.Context, model.Principal, uuid.UUID, model.UpdateCustomerInput) (model.Customer, error)
+	Update(
+		context.Context,
+		model.Principal,
+		uuid.UUID,
+		model.UpdateCustomerInput,
+	) (model.Customer, error)
 	// Delete remove o cliente indicado quando a política de autorização permite.
 	Delete(context.Context, model.Principal, uuid.UUID) error
 }
@@ -57,7 +62,11 @@ func (controller *CustomerController) Create(w http.ResponseWriter, request *htt
 		return
 	}
 
-	customer, err := controller.model.Create(request.Context(), principal, mapper.ToCreateCustomerInput(body))
+	customer, err := controller.model.Create(
+		request.Context(),
+		principal,
+		mapper.ToCreateCustomerInput(body),
+	)
 	if err != nil {
 		writeApplicationError(controller.logger, w, request, err)
 		return
@@ -122,7 +131,12 @@ func (controller *CustomerController) Update(w http.ResponseWriter, request *htt
 		return
 	}
 
-	customer, err := controller.model.Update(request.Context(), principal, id, mapper.ToUpdateCustomerInput(body))
+	customer, err := controller.model.Update(
+		request.Context(),
+		principal,
+		id,
+		mapper.ToUpdateCustomerInput(body),
+	)
 	if err != nil {
 		writeApplicationError(controller.logger, w, request, err)
 		return
@@ -151,7 +165,8 @@ func (controller *CustomerController) Delete(w http.ResponseWriter, request *htt
 }
 
 // principalFromRequest transforma as claims no principal entendido pelo Model.
-// Claims ausentes, UUID nulo ou UUID inválido são tratados como acesso proibido por segurança.
+// Claims ausentes, UUID nulo ou UUID inválido são tratados como acesso proibido
+// por segurança.
 func principalFromRequest(request *http.Request) (model.Principal, error) {
 	claims, ok := ClaimsFromContext(request.Context())
 	if !ok {
@@ -164,7 +179,8 @@ func principalFromRequest(request *http.Request) (model.Principal, error) {
 	return model.Principal{CustomerID: authenticatedCustomerID, Role: claims.Role}, nil
 }
 
-// writeResponse centraliza a serialização das respostas de cliente e registra falhas de escrita.
+// writeResponse centraliza a serialização das respostas de cliente e registra
+// falhas de escrita.
 func (controller *CustomerController) writeResponse(
 	w http.ResponseWriter,
 	request *http.Request,

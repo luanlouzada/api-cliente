@@ -21,7 +21,9 @@ const (
 )
 
 var (
-	customerEmailRegex       = regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`)
+	customerEmailRegex = regexp.MustCompile(
+		`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`,
+	)
 	customerPhoneFormatRegex = regexp.MustCompile(`^\+?[0-9(][0-9 ().-]*[0-9)]$`)
 )
 
@@ -52,10 +54,17 @@ type Customer struct {
 // exige um hash não vazio, gera um UUID v7 e atribui o papel menos privilegiado.
 // Retorna a entidade completa ou o primeiro erro de domínio encontrado.
 func NewCustomer(name, email, phone, passwordHash string) (Customer, error) {
-	customer, err := NewCustomerProfile(name, email, phone)
+	profile, err := NewCustomerProfile(name, email, phone)
 	if err != nil {
 		return Customer{}, err
 	}
+	return newCustomerFromProfile(profile, passwordHash)
+}
+
+// newCustomerFromProfile completa um perfil já normalizado e validado com os
+// campos necessários à persistência. Separar esta etapa evita validar o mesmo
+// perfil novamente depois que o hash de senha já foi calculado.
+func newCustomerFromProfile(profile Customer, passwordHash string) (Customer, error) {
 	if strings.TrimSpace(passwordHash) == "" {
 		return Customer{}, ErrCustomerPasswordHashRequired
 	}
@@ -65,10 +74,10 @@ func NewCustomer(name, email, phone, passwordHash string) (Customer, error) {
 		return Customer{}, err
 	}
 
-	customer.ID = id
-	customer.Role = CustomerRoleCustomer
-	customer.PasswordHash = passwordHash
-	return customer, nil
+	profile.ID = id
+	profile.Role = CustomerRoleCustomer
+	profile.PasswordHash = passwordHash
+	return profile, nil
 }
 
 // NewCustomerProfile normaliza e valida os campos públicos de um cliente.

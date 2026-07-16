@@ -18,9 +18,13 @@ const (
 )
 
 var (
-	ErrRefreshTokenIdleTTLInvalid     = errors.New("tempo de inatividade do refresh token deve ser positivo")
+	ErrRefreshTokenIdleTTLInvalid = errors.New(
+		"tempo de inatividade do refresh token deve ser positivo",
+	)
 	ErrRefreshTokenAbsoluteTTLInvalid = errors.New("tempo absoluto da sessão deve ser positivo")
-	ErrRefreshTokenLifetimeInvalid    = errors.New("tempo absoluto da sessão deve ser maior ou igual ao tempo de inatividade")
+	ErrRefreshTokenLifetimeInvalid    = errors.New(
+		"tempo absoluto da sessão deve ser maior ou igual ao tempo de inatividade",
+	)
 )
 
 // RefreshTokenManager gera credenciais aleatórias de renovação e seus hashes,
@@ -53,8 +57,8 @@ func NewRefreshTokenManager(idleTTL, absoluteTTL time.Duration) (*RefreshTokenMa
 }
 
 // Generate cria um refresh token com 256 bits de entropia e os metadados que
-// podem ser persistidos. Retorna o valor público uma única vez e mantém apenas
-// seu hash no Model; nenhuma expiração ultrapassa a duração da família.
+// podem ser persistidos. Retorna o valor público uma única vez; somente seu hash
+// segue para o banco, e nenhuma expiração ultrapassa a duração da família.
 func (manager *RefreshTokenManager) Generate() (string, RefreshToken, error) {
 	// crypto/rand obtém aleatoriedade do sistema operacional. io.ReadFull exige
 	// os 32 bytes completos; uma leitura parcial não produziria uma credencial.

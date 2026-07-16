@@ -17,8 +17,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// AccessTokenValidator lista o único método do Model que o Controller precisa
-// para autenticar requisições. É uma interface comum de Go, não uma nova camada.
+// AccessTokenValidator expõe somente a validação necessária ao middleware,
+// mantendo a emissão e os demais detalhes do token fora da fronteira HTTP.
 type AccessTokenValidator interface {
 	// Validate verifica assinatura e claims do token e devolve somente dados autenticados.
 	Validate(string) (model.Claims, error)
@@ -33,14 +33,16 @@ type requestMetadata struct {
 	customerID string
 }
 
-// setCustomerID registra de forma concorrente o cliente autenticado para enriquecer o log da requisição.
+// setCustomerID registra de forma concorrente o cliente autenticado para
+// enriquecer o log da requisição.
 func (metadata *requestMetadata) setCustomerID(customerID string) {
 	metadata.mutex.Lock()
 	defer metadata.mutex.Unlock()
 	metadata.customerID = customerID
 }
 
-// customerIDValue lê com segurança o identificador que poderá ser incluído no log ao fim da requisição.
+// customerIDValue lê com segurança o identificador que poderá ser incluído no
+// log ao fim da requisição.
 func (metadata *requestMetadata) customerIDValue() string {
 	metadata.mutex.RLock()
 	defer metadata.mutex.RUnlock()
@@ -92,7 +94,8 @@ func authenticationMiddleware(
 	}
 }
 
-// bearerToken extrai um token do esquema Authorization Bearer, aceitando diferenças de caixa no esquema.
+// bearerToken extrai um token do esquema Authorization Bearer, aceitando
+// diferenças de caixa no esquema.
 func bearerToken(authorization string) (string, bool) {
 	parts := strings.Fields(authorization)
 	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] == "" {
@@ -101,8 +104,9 @@ func bearerToken(authorization string) (string, bool) {
 	return parts[1], true
 }
 
-// requestLogger registra método, rota, status, tamanho, duração e identidade autenticada da requisição.
-// Os metadados sincronizados permitem que um handler executado pelo timeout atualize o log com segurança.
+// requestLogger registra método, rota, status, tamanho, duração e identidade
+// autenticada da requisição. Os metadados sincronizados permitem que um handler
+// executado pelo timeout atualize o log com segurança.
 func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
@@ -132,7 +136,8 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// recoverer converte pânicos dos handlers em erro HTTP estável e preserva a pilha apenas no log interno.
+// recoverer converte pânicos dos handlers em erro HTTP estável e preserva a
+// pilha apenas no log interno.
 func recoverer(logger *slog.Logger) func(http.Handler) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
@@ -153,7 +158,12 @@ func recoverer(logger *slog.Logger) func(http.Handler) http.Handler {
 					}
 					w.Header().Set("Cache-Control", "no-store")
 					w.Header().Set("Pragma", "no-cache")
-					_ = view.WriteError(w, http.StatusInternalServerError, "internal_error", "erro interno do servidor")
+					_ = view.WriteError(
+						w,
+						http.StatusInternalServerError,
+						"internal_error",
+						"erro interno do servidor",
+					)
 				}
 			}()
 			next.ServeHTTP(w, request)
@@ -161,7 +171,8 @@ func recoverer(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// securityHeaders adiciona proteções de navegador que valem para API e frontend antes do próximo handler.
+// securityHeaders adiciona proteções de navegador que valem para API e
+// frontend antes do próximo handler.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")

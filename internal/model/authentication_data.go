@@ -50,7 +50,7 @@ func (store *postgresData) CreateWithRefreshToken(
 		&customer.UpdatedAt,
 	)
 	if err != nil {
-		return Customer{}, RefreshToken{}, mapDatabaseError("cadastrar cliente", err)
+		return Customer{}, RefreshToken{}, mapDatabaseError("inserir cliente do cadastro", err)
 	}
 
 	token.CustomerID = customer.ID
@@ -65,7 +65,9 @@ func (store *postgresData) CreateWithRefreshToken(
 		return Customer{}, RefreshToken{}, err
 	}
 	if beforeCommit == nil {
-		return Customer{}, RefreshToken{}, fmt.Errorf("cadastro sem função transacional")
+		// A mensagem não recebe valores dinâmicos nem envolve outra causa.
+		// errors.New deixa explícito que o erro possui uma mensagem estática.
+		return Customer{}, RefreshToken{}, errors.New("cadastro sem função transacional")
 	}
 	if err := beforeCommit(customer); err != nil {
 		return Customer{}, RefreshToken{}, err
@@ -127,7 +129,7 @@ func (store *postgresData) CreateRefreshToken(
 		return Customer{}, RefreshToken{}, err
 	}
 	if beforeCommit == nil {
-		return Customer{}, RefreshToken{}, fmt.Errorf("criação de sessão sem função transacional")
+		return Customer{}, RefreshToken{}, errors.New("criação de sessão sem função transacional")
 	}
 	if err := beforeCommit(customer); err != nil {
 		return Customer{}, RefreshToken{}, err
@@ -212,7 +214,7 @@ func (store *postgresData) RotateRefreshToken(
 
 	idleTTL := replacement.ExpiresAt.Sub(replacement.CreatedAt)
 	if replacement.CreatedAt.IsZero() || idleTTL <= 0 {
-		return Customer{}, RefreshToken{}, fmt.Errorf("refresh token substituto sem data de criação")
+		return Customer{}, RefreshToken{}, errors.New("refresh token substituto sem data de criação")
 	}
 	now := databaseNow.UTC()
 	if revokedAt != nil {
@@ -250,7 +252,7 @@ func (store *postgresData) RotateRefreshToken(
 		replacement.ExpiresAt = familyExpiresAt
 	}
 	if beforeCommit == nil {
-		return Customer{}, RefreshToken{}, fmt.Errorf("rotação sem função transacional")
+		return Customer{}, RefreshToken{}, errors.New("rotação sem função transacional")
 	}
 	if err := beforeCommit(customer); err != nil {
 		return Customer{}, RefreshToken{}, err
@@ -349,9 +351,11 @@ func findRefreshTokenFamily(
 
 	var familyID uuid.UUID
 	var customerID uuid.UUID
-	if err := transaction.QueryRow(ctx, query, tokenHash).Scan(&familyID, &customerID); errors.Is(err, pgx.ErrNoRows) {
+	err := transaction.QueryRow(ctx, query, tokenHash).Scan(&familyID, &customerID)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, uuid.Nil, ErrRefreshTokenInvalid
-	} else if err != nil {
+	}
+	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("buscar família do refresh token: %w", err)
 	}
 	return familyID, customerID, nil
@@ -385,7 +389,8 @@ func lockRefreshCustomer(
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Customer{}, ErrRefreshTokenInvalid
-	} else if err != nil {
+	}
+	if err != nil {
 		return Customer{}, fmt.Errorf("bloquear cliente da sessão: %w", err)
 	}
 	return customer, nil
@@ -408,9 +413,11 @@ func lockRefreshTokenFamily(
 
 	var expiresAt time.Time
 	var revokedAt *time.Time
-	if err := transaction.QueryRow(ctx, query, familyID).Scan(&expiresAt, &revokedAt); errors.Is(err, pgx.ErrNoRows) {
+	err := transaction.QueryRow(ctx, query, familyID).Scan(&expiresAt, &revokedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return time.Time{}, nil, ErrRefreshTokenInvalid
-	} else if err != nil {
+	}
+	if err != nil {
 		return time.Time{}, nil, fmt.Errorf("bloquear família do refresh token: %w", err)
 	}
 	return expiresAt, revokedAt, nil
@@ -447,7 +454,7 @@ func normalizeInitialRefreshToken(
 	idleTTL := token.ExpiresAt.Sub(token.CreatedAt)
 	absoluteTTL := token.FamilyExpiresAt.Sub(token.CreatedAt)
 	if token.CreatedAt.IsZero() || idleTTL <= 0 || absoluteTTL < idleTTL {
-		return RefreshToken{}, fmt.Errorf("refresh token inicial com prazos inválidos")
+		return RefreshToken{}, errors.New("refresh token inicial com prazos inválidos")
 	}
 
 	databaseNow, err := currentDatabaseTime(ctx, transaction)

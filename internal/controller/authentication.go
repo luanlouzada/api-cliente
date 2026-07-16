@@ -44,7 +44,10 @@ func NewAuthenticationController(
 
 // Register recebe o cadastro, converte o DTO em entrada do Model e devolve a
 // sessão criada. Regras de negócio permanecem no Model.
-func (controller *AuthenticationController) Register(w http.ResponseWriter, request *http.Request) {
+func (controller *AuthenticationController) Register(
+	w http.ResponseWriter,
+	request *http.Request,
+) {
 	var body dto.CreateCustomerRequest
 	if err := decodeJSONBody(w, request, &body); err != nil {
 		writeApplicationError(controller.logger, w, request, err)

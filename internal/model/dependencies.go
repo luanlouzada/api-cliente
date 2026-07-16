@@ -7,9 +7,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// customerRecords é uma interface privada de Go que lista apenas as operações
-// de clientes necessárias ao Model. A implementação PostgreSQL continua no
-// mesmo pacote; esta interface não representa outra camada arquitetural.
+// customerRecords lista somente as operações de persistência necessárias às
+// regras de clientes. O contrato reduz o acoplamento com PostgreSQL e permite
+// exercitar o Model com implementações controladas.
 type customerRecords interface {
 	// Create persiste um novo cliente e devolve o estado confirmado pelo banco.
 	Create(context.Context, Customer) (Customer, error)
@@ -23,9 +23,9 @@ type customerRecords interface {
 	Delete(context.Context, uuid.UUID) error
 }
 
-// authenticationRecords é a interface privada com as operações PostgreSQL usadas
-// nos fluxos de cadastro, login, renovação e encerramento de sessão. Assim como
-// customerRecords, ela permanece dentro do Model e não cria outra camada.
+// authenticationRecords reúne as operações de persistência usadas nos fluxos
+// de cadastro, login, renovação e encerramento de sessão. O contrato deixa as
+// regras independentes dos detalhes de execução de cada consulta PostgreSQL.
 type authenticationRecords interface {
 	// CreateWithRefreshToken grava cliente e sessão inicial na mesma transação.
 	// A função recebida valida o cliente persistido; um erro impede a confirmação.

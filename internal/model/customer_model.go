@@ -68,8 +68,9 @@ func (model *CustomerModel) Create(
 	return created, nil
 }
 
-// List devolve todos os clientes para um principal administrador. Uma resposta
-// nil do banco é convertida em uma lista vazia para o JSON resultar em [] e não null.
+// List devolve todos os clientes para um principal administrador. A slice é
+// mantida como veio da persistência porque a representação JSON pertence à
+// fronteira de apresentação, não às regras do Model.
 func (model *CustomerModel) List(ctx context.Context, principal Principal) ([]Customer, error) {
 	if principal.Role != CustomerRoleAdmin {
 		return nil, ErrForbidden
@@ -77,9 +78,6 @@ func (model *CustomerModel) List(ctx context.Context, principal Principal) ([]Cu
 	customers, err := model.records.FindAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listar clientes: %w", err)
-	}
-	if customers == nil {
-		return []Customer{}, nil
 	}
 	return customers, nil
 }
@@ -145,7 +143,7 @@ func principalCanAccessCustomer(principal Principal, customerID uuid.UUID) bool 
 
 // buildCustomer transforma a entrada do Model em um Customer. Primeiro valida os
 // dados e só depois calcula o hash, evitando o trabalho custoso do bcrypt quando
-// a entrada já é inválida.
+// a entrada já é inválida e sem repetir a validação do perfil após o hash.
 func buildCustomer(input CreateCustomerInput, passwordHasher passwordProtector) (Customer, error) {
 	profile, err := NewCustomerProfile(input.Name, input.Email, input.Phone)
 	if err != nil {
@@ -160,9 +158,5 @@ func buildCustomer(input CreateCustomerInput, passwordHasher passwordProtector) 
 		return Customer{}, fmt.Errorf("proteger senha: %w", err)
 	}
 
-	customer, err := NewCustomer(profile.Name, profile.Email, profile.Phone, passwordHash)
-	if err != nil {
-		return Customer{}, err
-	}
-	return customer, nil
+	return newCustomerFromProfile(profile, passwordHash)
 }

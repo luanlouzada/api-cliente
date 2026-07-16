@@ -5,11 +5,10 @@ chama o Model e escolhe a View devolvida ao cliente.
 
 ## Controller e `http.Handler`
 
-Em Go, `http.Handler` e `http.HandlerFunc` são os tipos da biblioteca padrão
-usados para atender requisições. Neste projeto, isso não cria uma camada
-“Handler”: os métodos de `AuthenticationController`, `CustomerController` e
-`FrontendController` são os próprios Controllers e possuem a assinatura aceita
-pelo roteador.
+Em Go, `http.Handler` e `http.HandlerFunc` são contratos da biblioteca padrão
+usados para atender requisições. Os métodos de `AuthenticationController`,
+`CustomerController` e `FrontendController` implementam esse papel técnico e
+possuem a assinatura aceita pelo roteador.
 
 Um *middleware* é apenas uma função que envolve um `http.Handler`: ela pode agir
 antes e depois do próximo atendimento. Aqui os middlewares cuidam de log,
@@ -39,5 +38,6 @@ Um Controller deve seguir esta ordem:
 4. traduzir erros conhecidos para HTTP;
 5. usar Mapper e View para escrever a resposta.
 
-Validação de formato pertence ao Controller. Validação de negócio e autorização
-pertencem ao Model.
+Validações da requisição HTTP, como `Content-Type`, estrutura JSON e parâmetros
+de rota, pertencem ao Controller. Normalização e validação dos dados do domínio,
+como email e telefone, além da autorização, pertencem ao Model.
